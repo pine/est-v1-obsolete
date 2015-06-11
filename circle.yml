@@ -1,0 +1,20 @@
+machine:
+  environment:
+    PATH: $HOME/perl5/bin:$PATH
+
+dependencies:
+  pre:
+    - perl -v
+    - bash .circle/install-cpanm.bash
+    - bash .circle/install-carton.bash
+
+  override:
+    - carton install --deployment
+
+  cache_directories:
+    - local
+    - ~/perl5
+
+test:
+  override:
+    - carton exec -- prove t

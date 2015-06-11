@@ -1,0 +1,31 @@
+#!/bin/bash
+
+echo "Running .openshift/action_hooks/deploy"
+
+# OpenShift 環境で動作させるための変数定義
+export PERL_CARTON_PATH=~/app-root/data/local
+export PERL_CARTON_CPANFILE=$OPENSHIFT_REPO_DIR/cpanfile
+export PERL5LIB=$PERL_CARTON_PATH/lib/perl5
+
+# Carton の bin も PATH に追加する (start_server / plackup で利用)
+export PATH=$PERL_CARTON_PATH/bin:~/app-root/data/perl-5.18.2/bin:$PATH
+
+# 今回の肝
+HOME=~/app-root/data
+
+cd $OPENSHIFT_REPO_DIR
+
+# 依存ライブラリのインストール
+carton install --deployment
+
+# 既に起動しているサーバーの PID を取得
+PID=`ps -ef | grep start_server | grep -v grep | awk '{ print $2 }'`
+
+if [ "$PID" != "" ]; then
+    kill -s HUP $PID # 再起動
+else
+    nohup start_server --port=$OPENSHIFT_DIY_IP:$OPENSHIFT_DIY_PORT -- \
+        plackup -s Starlet --max-workers=1 \
+        $OPENSHIFT_REPO_DIR/script/est-server \
+        >> $OPENSHIFT_DIY_LOG_DIR/plack.log 2>&1 & # 起動
+fi
